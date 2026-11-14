@@ -20,10 +20,19 @@
 
 ```bash
 npm install
-npm start        # http://localhost:4200
+npm start        # http://localhost:4200/calculator
 npm run build    # إخراج الإنتاج إلى dist/
 npm test         # اختبارات الوحدة
 ```
+
+## المسارات
+
+| المسار             | الوظيفة                        |
+| ------------------ | ------------------------------ |
+| `/`                | تحويل تلقائي إلى `/calculator` |
+| `/calculator`      | حاسبة تمويل السيارات           |
+| `/loan-calculator` | تحويل إلى `/calculator`        |
+| أي مسار غير معروف  | تحويل إلى `/calculator`        |
 
 ## البنية
 
