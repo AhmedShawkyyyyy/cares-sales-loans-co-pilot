@@ -5,6 +5,7 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:pages": "ng build --base-href /cares-sales-loans-co-pilot/",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

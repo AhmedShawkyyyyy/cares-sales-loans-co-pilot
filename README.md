@@ -25,6 +25,15 @@ npm run build    # إخراج الإنتاج إلى dist/
 npm test         # اختبارات الوحدة
 ```
 
+## النشر على GitHub Pages
+
+**الرابط:** https://ahmedshawkyyyyy.github.io/cares-sales-loans-co-pilot/
+
+يتم بناء التطبيق ونشره تلقائياً عند كل push إلى فرع `master` عبر
+GitHub Actions (`.github/workflows/deploy-pages.yml`). يتم البناء باستخدام
+`npm run build:pages` لضبط `base href` على مسار المشروع، مع إنشاء `404.html`
+لدعم فتح مسارات التطبيق مباشرة.
+
 ## المسارات
 
 | المسار             | الوظيفة                        |
