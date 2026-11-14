@@ -1,0 +1,84 @@
+<header class="border-b border-line bg-white">
+  <div
+    class="mx-auto flex h-[72px] max-w-7xl items-center justify-between gap-5 px-5 sm:px-6 lg:px-8"
+  >
+    <div class="flex min-w-0 items-center gap-3">
+      <svg
+        class="h-7 w-7 shrink-0 text-navy"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path
+          d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-2.3-2.2-3.4C13 5.6 11.9 5 10.7 5H6.5C4.6 5 3 6.6 3 8.5V16c0 .6.4 1 1 1h2"
+        />
+        <circle cx="7" cy="17" r="2" />
+        <path d="M9 17h6" />
+        <circle cx="17" cy="17" r="2" />
+      </svg>
+      <div class="min-w-0 leading-tight">
+        <p class="truncate text-[15px] font-bold text-ink">كوبايلوت أخصائي مبيعات السيارات</p>
+        <p class="mt-0.5 truncate text-[11px] font-medium tracking-wide text-muted">
+          Car Sales Specialist Co-Pilot
+        </p>
+      </div>
+    </div>
+
+    <div class="flex shrink-0 items-center gap-2">
+      <button
+        type="button"
+        class="btn-ghost"
+        title="استعادة القيم الافتراضية"
+        aria-label="إعادة تعيين جميع الحقول"
+        (click)="store.resetAll()"
+      >
+        <svg
+          class="h-3.5 w-3.5"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+          <path d="M3 3v5h5" />
+        </svg>
+        <span class="hidden sm:inline">إعادة تعيين</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-5 pt-8 pb-14 sm:px-6 lg:px-8">
+  <div class="mb-8">
+    <div class="mb-2 flex items-center gap-2 text-[11px] font-medium">
+      <span class="text-navy">المبيعات</span>
+      <span class="text-slate-300">/</span>
+      <span class="text-muted">عرض جديد</span>
+    </div>
+    <h1 class="text-[30px] leading-[1.2] font-bold tracking-[-0.02em] sm:text-[34px]">
+      حاسبة تمويل السيارات
+    </h1>
+    <p class="mt-2 max-w-2xl text-[13.5px] leading-7 text-muted sm:text-sm">
+      احسب القسط الشهري، المصاريف، وإجمالي المطلوب كاش، ثم انسخ عرضاً جاهزاً للعميل فوراً.
+    </p>
+  </div>
+
+  <div class="grid grid-cols-1 items-start gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+    <app-loan-inputs-panel />
+    <app-loan-results-panel />
+  </div>
+
+  <footer
+    class="mt-10 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-5 text-[11px] leading-relaxed text-muted"
+  >
+    <p>Car Sales Specialist Co-Pilot — أداة مساعدة لأخصائيي مبيعات السيارات.</p>
+    <p>الأرقام تقديرية وتخضع لموافقة البنك النهائية.</p>
+  </footer>
+</main>

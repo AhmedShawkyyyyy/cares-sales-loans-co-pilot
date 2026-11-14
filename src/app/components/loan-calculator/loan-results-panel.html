@@ -1,0 +1,327 @@
+@let calc = store.calculation();
+@let ready = store.ready();
+
+<section class="panel lg:sticky lg:top-5" aria-labelledby="results-title">
+  <div class="panel-head">
+    <div>
+      <h2 id="results-title" class="text-[16px] font-bold tracking-[-0.01em] text-ink">
+        ملخص العرض
+      </h2>
+      <p class="section-caption">تفاصيل الحساب تتحدث فوراً مع كل تعديل.</p>
+    </div>
+    <span class="live-chip">
+      <span class="live-dot"></span>
+      مباشر
+    </span>
+  </div>
+
+  <div class="panel-body space-y-5">
+    @if (store.belowMinimum()) {
+      <div class="rounded-xl border border-amber-200/90 bg-amber-50/80 p-4 sm:p-5">
+        <div class="flex items-start gap-3">
+          <svg
+            class="mt-0.5 h-5 w-5 shrink-0 text-amber-brand"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M12 9v4" />
+            <path d="M12 17h.01" />
+            <path
+              d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+            />
+          </svg>
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="text-[13px] font-semibold text-amber-900">المقدم أقل من الحد الأدنى</p>
+              <span class="pill pill-amber num">
+                {{ formatPercent(calc.downPaymentPercent) }}%
+              </span>
+            </div>
+            <p class="mt-1.5 text-xs leading-relaxed text-amber-800">
+              الحد الأدنى للمقدم هو 25%. الحساب المعروض تقديري ويستخدم سياسة فئة 25% كمرجع.
+            </p>
+          </div>
+        </div>
+      </div>
+    } @else {
+      <div class="rounded-xl border border-line bg-page/60 p-4 sm:p-5">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <p class="text-[11px] font-medium text-muted">فئة المقدم</p>
+            <div class="mt-1 flex items-center gap-2">
+              <p class="text-[20px] font-bold leading-none tracking-[-0.01em] text-ink">
+                {{ store.tierLabel() }}
+              </p>
+              <span class="pill pill-navy num">
+                {{ formatPercent(calc.downPaymentPercent) }}%
+              </span>
+            </div>
+          </div>
+          <span class="num text-[11px] font-medium text-muted"> {{ store.years() }} سنوات </span>
+        </div>
+
+        <p class="mt-2.5 text-xs leading-relaxed text-slate-500">
+          {{ bankName() }} • {{ vehicleLabel() }} • {{ applicantLabel() }}
+        </p>
+
+        <div
+          class="mt-3 flex items-start gap-2 border-t border-line pt-3 text-xs leading-relaxed text-slate-600"
+        >
+          <svg
+            class="mt-0.5 h-4 w-4 shrink-0 text-emerald-brand"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+          <span>{{ store.feePolicyNote() }}</span>
+        </div>
+      </div>
+    }
+
+    <div class="rounded-xl border border-navy/15 bg-navy-soft/70 px-5 py-5 sm:px-6 sm:py-6">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-medium text-navy">القسط الشهري</p>
+          <p class="num mt-1 text-[11.5px] text-slate-500">
+            {{ calc.years }} سنوات • {{ formatInteger(calc.totalInstallments) }} قسط
+          </p>
+        </div>
+        <span class="pill pill-outline">{{ rateSourceLabel() }}</span>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-end gap-x-2 gap-y-1">
+        @if (ready) {
+          <p
+            class="num text-[40px] leading-none font-bold tracking-[-0.025em] text-navy sm:text-[46px]"
+          >
+            {{ formatAmount(calc.monthlyInstallment) }}
+          </p>
+          <span class="pb-1 text-[13px] font-medium text-navy/70"> ج.م / شهرياً </span>
+        } @else {
+          <p class="text-[40px] leading-none font-bold text-slate-300">—</p>
+          <span class="pb-1.5 text-xs font-medium text-muted">
+            {{ blockingMessage() }}
+          </span>
+        }
+      </div>
+
+      @if (ready) {
+        <p class="mt-4 border-t border-navy/10 pt-3 text-xs text-slate-600">
+          على مدة {{ calc.years }} سنوات بسعر فائدة
+          <span class="num font-medium">{{ formatPercent(calc.annualRate) }}%</span> سنوياً.
+        </p>
+      }
+
+      @if (store.belowMinimum() && store.carPrice() > 0) {
+        <p class="mt-2 text-xs font-medium text-amber-700">
+          القسط تقديري حتى الوصول إلى حد المقدم الأدنى 25%.
+        </p>
+      }
+    </div>
+  </div>
+
+  <div class="border-t border-line px-5 py-5 sm:px-6">
+    <div class="mb-1.5 flex items-center justify-between gap-2">
+      <h3 class="text-[13px] font-semibold text-ink">تفاصيل الحساب</h3>
+      <span class="text-[11px] text-muted">جميع المبالغ بالجنيه المصري</span>
+    </div>
+
+    <dl class="divide-y divide-line/80">
+      <div class="summary-row">
+        <dt class="summary-label">سعر السيارة</dt>
+        <dd class="text-end">
+          <span class="summary-value">{{ formatAmount(calc.carPrice) }}</span>
+          <span class="ms-1 text-[11px] font-medium text-muted">ج.م</span>
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt class="summary-label">قيمة المقدم</dt>
+        <dd class="text-end">
+          <span class="summary-value">{{ formatAmount(calc.downPayment) }}</span>
+          <span class="ms-1 text-[11px] font-medium text-muted">ج.م</span>
+          <span class="num ms-1 text-[11px] font-medium text-muted">
+            ({{ formatPercent(calc.downPaymentPercent) }}%)
+          </span>
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt class="summary-label">مبلغ التمويل</dt>
+        <dd class="text-end">
+          <span class="summary-value">{{ formatAmount(calc.loanPrincipal) }}</span>
+          <span class="ms-1 text-[11px] font-medium text-muted">ج.م</span>
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt class="summary-label">الفائدة السنوية</dt>
+        <dd class="flex flex-wrap items-center justify-end gap-1.5">
+          @if (store.rateMissing()) {
+            <span class="pill pill-amber">مطلوب</span>
+          } @else {
+            <span class="summary-value"> {{ formatPercent(calc.annualRate) }}% </span>
+            <span class="pill pill-neutral">{{ rateSourceLabel() }}</span>
+          }
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt>
+          <span class="summary-label">المصاريف الإدارية</span>
+          <span class="mt-0.5 block text-[11px] text-muted"> على مبلغ التمويل </span>
+        </dt>
+        <dd class="flex flex-wrap items-center justify-end gap-1.5">
+          <span
+            class="pill num"
+            [class.pill-emerald]="calc.adminFeePercent === 0"
+            [class.pill-neutral]="calc.adminFeePercent > 0"
+          >
+            {{ formatPercent(calc.adminFeePercent) }}%
+          </span>
+          <span class="summary-value">
+            {{ formatAmount(calc.adminFeeAmount) }}
+            <span class="text-[11px] font-medium text-muted">ج.م</span>
+          </span>
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt>
+          <span class="summary-label">مصاريف التأمين</span>
+          <span class="mt-0.5 block text-[11px] text-muted"> على سعر السيارة </span>
+        </dt>
+        <dd class="flex flex-wrap items-center justify-end gap-1.5">
+          <span
+            class="pill num"
+            [class.pill-emerald]="calc.insurancePercent === 0"
+            [class.pill-neutral]="calc.insurancePercent > 0"
+          >
+            {{ formatPercent(calc.insurancePercent) }}%
+          </span>
+          <span class="summary-value">
+            {{ formatAmount(calc.insuranceAmount) }}
+            <span class="text-[11px] font-medium text-muted">ج.م</span>
+          </span>
+        </dd>
+      </div>
+    </dl>
+
+    <div class="mt-4 rounded-xl border border-emerald-200/90 bg-emerald-50/80 px-4 py-4">
+      <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+        <div>
+          <p class="text-[13px] font-semibold leading-snug text-emerald-900">
+            إجمالي المطلوب كاش عند الاستلام
+          </p>
+          <p class="mt-1 text-[11px] leading-relaxed text-emerald-700">
+            المقدم + المصاريف الإدارية + التأمين
+          </p>
+        </div>
+        <p class="num shrink-0 text-[20px] font-bold text-emerald-700">
+          {{ formatAmount(calc.totalCashOnDelivery) }}
+          <span class="text-[11px] font-semibold">ج.م</span>
+        </p>
+      </div>
+    </div>
+
+    <dl class="mt-1 divide-y divide-line/80">
+      <div class="summary-row">
+        <dt class="summary-label">إجمالي الفوائد</dt>
+        <dd class="text-end">
+          @if (ready) {
+            <span class="summary-value">
+              {{ formatAmount(calc.totalInterest) }}
+            </span>
+            <span class="ms-1 text-[11px] font-medium text-muted">ج.م</span>
+          } @else {
+            <span class="text-slate-300">—</span>
+          }
+        </dd>
+      </div>
+
+      <div class="summary-row">
+        <dt class="text-[13px] font-semibold text-ink">إجمالي المبلغ المسدد</dt>
+        <dd class="text-end">
+          @if (ready) {
+            <span class="num text-[15px] font-bold text-ink">
+              {{ formatAmount(calc.totalPayable) }}
+            </span>
+            <span class="ms-1 text-[11px] font-medium text-muted">ج.م</span>
+          } @else {
+            <span class="text-slate-300">—</span>
+          }
+        </dd>
+      </div>
+    </dl>
+  </div>
+
+  <div class="border-t border-line p-5 sm:p-6">
+    <button
+      type="button"
+      class="btn-primary w-full"
+      [class.copy-success]="copyState() === 'copied'"
+      [disabled]="!ready"
+      (click)="copyQuote()"
+    >
+      @if (copyState() === 'copied') {
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      } @else if (copyState() === 'error') {
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="9" />
+          <path d="M12 8v4" />
+          <path d="M12 16h.01" />
+        </svg>
+      } @else {
+        <svg
+          class="h-4 w-4"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.5"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <rect width="14" height="14" x="8" y="8" rx="2" ry="2" />
+          <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+        </svg>
+      }
+      <span>{{ copyLabel() }}</span>
+    </button>
+
+    <p class="mt-3 text-center text-[11px] leading-relaxed text-muted">
+      يُنسَخ ملخص عربي منسّق للمشاركة على واتساب. الحساب تقديري ويخضع لموافقة البنك النهائية.
+    </p>
+  </div>
+</section>
