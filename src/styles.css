@@ -268,7 +268,7 @@
   }
 
   .live-chip {
-    @apply inline-flex items-center gap-1.5 text-[11px] font-medium text-muted;
+    @apply inline-flex shrink-0 items-center gap-1.5 text-[11px] font-medium whitespace-nowrap text-muted;
   }
 
   .live-dot {
