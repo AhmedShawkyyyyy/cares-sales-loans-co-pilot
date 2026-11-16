@@ -98,7 +98,12 @@ export class LoanCalculatorService {
     return getEbankRate(this.effectiveTier(), this.years(), this.applicantType());
   });
 
-  readonly annualRate = computed<number>(() => this.tableRate() ?? this._manualRate() ?? 0);
+  readonly annualRate = computed<number>(() => this._manualRate() ?? this.tableRate() ?? 0);
+
+  /** True when an E-Bank table rate has been replaced manually. */
+  readonly rateOverridden = computed<boolean>(
+    () => this.isAutomaticRate() && this._manualRate() !== null,
+  );
 
   readonly rateMissing = computed<boolean>(
     () => !this.isAutomaticRate() && this._manualRate() === null,
@@ -160,10 +165,7 @@ export class LoanCalculatorService {
 
     this.vehicleType.set(vehicleType);
     this.applyFeeDefaults();
-
-    if (!this.isAutomaticRate()) {
-      this._manualRate.set(null);
-    }
+    this._manualRate.set(null);
   }
 
   setBank(bankId: BankId): void {
@@ -173,10 +175,7 @@ export class LoanCalculatorService {
 
     this.bankId.set(bankId);
     this.applyFeeDefaults();
-
-    if (!this.isAutomaticRate()) {
-      this._manualRate.set(null);
-    }
+    this._manualRate.set(null);
   }
 
   setApplicantType(applicantType: ApplicantType): void {
@@ -243,6 +242,10 @@ export class LoanCalculatorService {
     }
 
     this._manualRate.set(roundPercent(clamp(value, 0, MAX_PERCENT)));
+  }
+
+  resetRate(): void {
+    this._manualRate.set(null);
   }
 
   setAdminFeePercent(value: number): void {

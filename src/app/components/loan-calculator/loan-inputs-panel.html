@@ -238,37 +238,57 @@
 
       <div class="mt-6">
         <div class="field-label">
-          <span>سعر الفائدة السنوية %</span>
+          <label for="interest-rate">سعر الفائدة السنوية %</label>
           @if (store.isAutomaticRate()) {
-            <span class="pill pill-navy">تلقائي من الجدول</span>
+            @if (store.rateOverridden()) {
+              <span class="pill pill-amber">مُعدّل يدوياً</span>
+            } @else {
+              <span class="pill pill-navy">تلقائي من الجدول</span>
+            }
           } @else {
             <span class="pill pill-amber">إدخال يدوي للفائدة</span>
           }
         </div>
 
+        <app-percent-input
+          inputId="interest-rate"
+          [value]="store.annualRate()"
+          [invalid]="store.rateMissing()"
+          placeholder="مثال: 15.5"
+          (valueChange)="store.setManualRate($event)"
+        />
+
         @if (store.isAutomaticRate()) {
-          <div class="relative">
-            <input
-              id="interest-rate-auto"
-              type="text"
-              readonly
-              class="control control-with-unit num border-navy/15 bg-navy-soft/60 text-start font-semibold text-navy"
-              [value]="formatPercent(store.annualRate())"
-              aria-label="سعر الفائدة السنوية المحسوب تلقائياً"
-            />
-            <span class="unit text-navy/70">%</span>
-          </div>
-          <p class="field-hint">
-            يُحدَّد تلقائياً من جدول تنمية الصادرات (E-Bank) حسب فئة المقدم والمدة ونوع العميل.
-          </p>
+          @if (store.rateOverridden()) {
+            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-xs text-amber-700">
+                سعر الجدول الحالي
+                <span class="num font-medium">{{ formatPercent(store.tableRate() ?? 0) }}%</span>
+                — تم استخدام قيمة معدّلة يدوياً.
+              </p>
+              <button type="button" class="btn-link" (click)="store.resetRate()">
+                <svg
+                  class="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                  <path d="M3 3v5h5" />
+                </svg>
+                استعادة الافتراضي
+              </button>
+            </div>
+          } @else {
+            <p class="field-hint">
+              يُحدَّد تلقائياً من جدول تنمية الصادرات (E-Bank) ويمكن تعديله يدوياً عند الحاجة.
+            </p>
+          }
         } @else {
-          <app-percent-input
-            inputId="interest-rate-manual"
-            [value]="store.manualRate()"
-            [invalid]="store.rateMissing()"
-            placeholder="مثال: 15.5"
-            (valueChange)="store.setManualRate($event)"
-          />
           @if (store.rateMissing()) {
             <p class="mt-2 text-xs font-medium text-amber-brand">
               سعر الفائدة مطلوب لحساب القسط الشهري.

@@ -38,9 +38,13 @@ export class LoanResultsPanelComponent implements OnDestroy {
     () => getApplicantTypeOption(this.store.applicantType()).label,
   );
 
-  protected readonly rateSourceLabel = computed<string>(() =>
-    this.store.isAutomaticRate() ? 'جدول E-Bank' : 'إدخال يدوي',
-  );
+  protected readonly rateSourceLabel = computed<string>(() => {
+    if (this.store.rateOverridden()) {
+      return 'معدّل يدوياً';
+    }
+
+    return this.store.isAutomaticRate() ? 'جدول E-Bank' : 'إدخال يدوي';
+  });
 
   protected readonly blockingMessage = computed<string>(() => {
     if (this.store.carPrice() <= 0) {

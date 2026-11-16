@@ -83,6 +83,40 @@ describe('LoanCalculatorService', () => {
     expect(service.annualRate()).toBe(15.6);
   });
 
+  it('allows overriding the automatic E-Bank rate and restoring the table value', () => {
+    expect(service.rateOverridden()).toBe(false);
+    expect(service.annualRate()).toBe(14.5);
+
+    service.setManualRate(12.25);
+    expect(service.rateOverridden()).toBe(true);
+    expect(service.annualRate()).toBe(12.25);
+    expect(service.calculation().annualRate).toBe(12.25);
+    expect(service.rateMissing()).toBe(false);
+
+    service.setYears(8);
+    expect(service.annualRate()).toBe(12.25);
+
+    service.resetRate();
+    expect(service.rateOverridden()).toBe(false);
+    expect(service.annualRate()).toBe(16.1);
+  });
+
+  it('clears a rate override when the bank or vehicle type changes', () => {
+    service.setManualRate(12.25);
+    expect(service.rateOverridden()).toBe(true);
+
+    service.setBank('adib');
+    expect(service.manualRate()).toBeNull();
+    expect(service.rateOverridden()).toBe(false);
+
+    service.setManualRate(15.5);
+    expect(service.rateOverridden()).toBe(false);
+
+    service.setBank('ebank');
+    expect(service.manualRate()).toBeNull();
+    expect(service.annualRate()).toBe(14.5);
+  });
+
   it('requires a manual rate for banks without an automatic table', () => {
     service.setBank('adib');
 
