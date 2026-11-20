@@ -43,7 +43,20 @@ export class LoanResultsPanelComponent implements OnDestroy {
       return 'معدّل يدوياً';
     }
 
-    return this.store.isAutomaticRate() ? 'جدول E-Bank' : 'إدخال يدوي';
+    if (this.store.tableRate() !== null) {
+      switch (this.store.bankId()) {
+        case 'ebank':
+          return 'جدول E-Bank';
+        case 'adib':
+          return 'جدول ADIB';
+        case 'abe':
+          return 'جدول البنك الزراعي';
+        default:
+          return 'جدول البنك';
+      }
+    }
+
+    return 'إدخال يدوي';
   });
 
   protected readonly blockingMessage = computed<string>(() => {

@@ -116,6 +116,35 @@
           </div>
         </div>
       </div>
+
+      @if (store.isAdibPassenger()) {
+        <div class="mt-5">
+          <span class="field-label">تأمين إجباري</span>
+          <div class="segmented grid-cols-2" role="group" aria-label="تأمين إجباري">
+            <button
+              type="button"
+              class="segmented-item"
+              [class.segmented-item-active]="store.adibInsured()"
+              [attr.aria-pressed]="store.adibInsured()"
+              (click)="store.setAdibInsured(true)"
+            >
+              نعم
+            </button>
+            <button
+              type="button"
+              class="segmented-item"
+              [class.segmented-item-active]="!store.adibInsured()"
+              [attr.aria-pressed]="!store.adibInsured()"
+              (click)="store.setAdibInsured(false)"
+            >
+              لا
+            </button>
+          </div>
+          <p class="field-hint">
+            اختر «نعم» مع التأمين الإجباري أو «لا» بدونه — يُحدَّث سعر الفائدة تلقائياً من جدول ADIB.
+          </p>
+        </div>
+      }
     </section>
 
     <div class="border-t border-line"></div>
@@ -132,6 +161,7 @@
             inputId="car-price"
             [value]="store.carPrice()"
             [invalid]="store.carPrice() <= 0"
+            placeholder="أدخل سعر السيارة"
             (valueChange)="store.setCarPrice($event ?? 0)"
           />
           @if (store.carPrice() <= 0) {
@@ -155,9 +185,14 @@
           <app-currency-input
             inputId="down-payment"
             [value]="store.downPayment()"
+            placeholder="أدخل قيمة المقدم"
             (valueChange)="store.setDownPayment($event ?? 0)"
           />
-          @if (store.carPrice() > 0 && !store.belowMinimum()) {
+          @if (store.carPrice() <= 0) {
+            <p class="field-hint">أدخل سعر السيارة أولاً لحساب نسبة المقدم.</p>
+          } @else if (store.downPayment() <= 0) {
+            <p class="field-hint">اكتب قيمة المقدم أو اختر نسبة سريعة.</p>
+          } @else if (!store.belowMinimum()) {
             <p class="field-hint">
               الفئة الحالية:
               <span class="font-medium text-navy">{{ store.tierLabel() }}</span>
@@ -168,16 +203,20 @@
 
       <div class="mt-4 flex flex-wrap items-center gap-2">
         <span class="w-full text-xs font-medium text-muted sm:w-auto">نسب سريعة:</span>
-        @for (percent of quickPercents; track percent) {
+        @for (percent of quickPercents(); track percent) {
           <button
             type="button"
-            class="chip-btn num"
+            class="chip-btn num disabled:pointer-events-none disabled:opacity-50"
             [class.chip-btn-active]="isQuickPercentActive(percent)"
             [attr.aria-pressed]="isQuickPercentActive(percent)"
+            [disabled]="store.carPrice() <= 0"
             (click)="store.setDownPaymentPercent(percent)"
           >
             {{ percent }}%
           </button>
+        }
+        @if (store.carPrice() <= 0) {
+          <span class="text-[11px] text-muted">أدخل سعر السيارة لتفعيل النسب السريعة.</span>
         }
       </div>
 
@@ -200,7 +239,9 @@
             <path d="M12 17h.01" />
           </svg>
           <div>
-            <p class="text-[13px] font-semibold">الحد الأدنى للمقدم هو 25%</p>
+            <p class="text-[13px] font-semibold">
+              الحد الأدنى للمقدم هو {{ store.minimumDownPaymentPercent() }}%
+            </p>
             <p class="mt-1 text-xs">
               المقدم الحالي
               <span class="num">{{ formatPercent(store.downPaymentPercent()) }}%</span>
@@ -239,12 +280,10 @@
       <div class="mt-6">
         <div class="field-label">
           <label for="interest-rate">سعر الفائدة السنوية %</label>
-          @if (store.isAutomaticRate()) {
-            @if (store.rateOverridden()) {
-              <span class="pill pill-amber">مُعدّل يدوياً</span>
-            } @else {
-              <span class="pill pill-navy">تلقائي من الجدول</span>
-            }
+          @if (store.rateOverridden()) {
+            <span class="pill pill-amber">مُعدّل يدوياً</span>
+          } @else if (store.tableRate() !== null) {
+            <span class="pill pill-navy">تلقائي من الجدول</span>
           } @else {
             <span class="pill pill-amber">إدخال يدوي للفائدة</span>
           }
@@ -252,50 +291,54 @@
 
         <app-percent-input
           inputId="interest-rate"
-          [value]="store.annualRate()"
+          [value]="store.rateInputValue()"
           [invalid]="store.rateMissing()"
-          placeholder="مثال: 15.5"
+          placeholder="أدخل سعر الفائدة"
           (valueChange)="store.setManualRate($event)"
         />
 
-        @if (store.isAutomaticRate()) {
-          @if (store.rateOverridden()) {
-            <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
-              <p class="text-xs text-amber-700">
-                سعر الجدول الحالي
-                <span class="num font-medium">{{ formatPercent(store.tableRate() ?? 0) }}%</span>
-                — تم استخدام قيمة معدّلة يدوياً.
-              </p>
-              <button type="button" class="btn-link" (click)="store.resetRate()">
-                <svg
-                  class="h-3.5 w-3.5"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.5"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
-                  <path d="M3 3v5h5" />
-                </svg>
-                استعادة الافتراضي
-              </button>
-            </div>
-          } @else {
+        @if (store.rateOverridden()) {
+          <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <p class="text-xs text-amber-700">
+              سعر الجدول الحالي
+              <span class="num font-medium">{{ formatPercent(store.tableRate() ?? 0) }}%</span>
+              — تم استخدام قيمة معدّلة يدوياً.
+            </p>
+            <button type="button" class="btn-link" (click)="store.resetRate()">
+              <svg
+                class="h-3.5 w-3.5"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5" />
+              </svg>
+              استعادة الافتراضي
+            </button>
+          </div>
+        } @else if (store.tableRate() !== null) {
+          <p class="field-hint">يُحدَّد تلقائياً من جدول البنك ويمكن تعديله يدوياً عند الحاجة.</p>
+        } @else if (store.isAutomaticRate()) {
+          @if (store.manualRate() !== null) {
             <p class="field-hint">
-              يُحدَّد تلقائياً من جدول تنمية الصادرات (E-Bank) ويمكن تعديله يدوياً عند الحاجة.
-            </p>
-          }
-        } @else {
-          @if (store.rateMissing()) {
-            <p class="mt-2 text-xs font-medium text-amber-brand">
-              سعر الفائدة مطلوب لحساب القسط الشهري.
+              تم إدخال سعر الفائدة يدوياً لهذه التركيبة، وسيُستخدم في الحساب الحالي.
             </p>
           } @else {
-            <p class="field-hint">أدخل النسبة السنوية المتفق عليها مع البنك — هذا الحقل مطلوب.</p>
+            <p class="mt-2 text-xs font-medium text-amber-brand">
+              {{ store.rateTableNote() }}
+            </p>
           }
+        } @else if (store.rateMissing()) {
+          <p class="mt-2 text-xs font-medium text-amber-brand">
+            سعر الفائدة مطلوب لحساب القسط الشهري.
+          </p>
+        } @else {
+          <p class="field-hint">أدخل النسبة السنوية المتفق عليها مع البنك — هذا الحقل مطلوب.</p>
         }
       </div>
     </section>

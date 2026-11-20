@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import {
+  AdibPassengerTier,
   ApplicantType,
   BankId,
   DownPaymentTier,
@@ -8,14 +9,18 @@ import {
   VehicleType,
 } from '../models/loan.models';
 import {
-  MIN_DOWN_PAYMENT_PERCENT,
+  getAbeCommercialRate,
+  getAdibCommercialRate,
+  getAdibPassengerRate,
   getApplicantTypeOption,
   getBankOption,
   getDefaultFees,
   getEbankRate,
   getFeePolicyNote,
+  getMinDownPaymentPercent,
   getTierOption,
   getVehicleTypeOption,
+  resolveAdibPassengerTier,
   resolveDownPaymentTier,
   usesAutomaticRate,
 } from '../data/banks-rates.data';
@@ -27,8 +32,8 @@ import {
   roundPercent,
 } from '../utils/format.utils';
 
-const INITIAL_CAR_PRICE = 1_500_000;
-const INITIAL_DOWN_PAYMENT = 375_000;
+const INITIAL_CAR_PRICE = 0;
+const INITIAL_DOWN_PAYMENT = 0;
 const INITIAL_YEARS: LoanTermYears = 5;
 const MAX_PERCENT = 100;
 
@@ -43,6 +48,9 @@ export class LoanCalculatorService {
   readonly downPayment = signal<number>(INITIAL_DOWN_PAYMENT);
   readonly years = signal<LoanTermYears>(INITIAL_YEARS);
 
+  /** ADIB passenger-car mandatory insurance choice (تأمين إجباري: نعم / لا). */
+  readonly adibInsured = signal<boolean>(true);
+
   private readonly _manualRate = signal<number | null>(null);
   private readonly _adminFeePercent = signal<number>(INITIAL_FEES.adminFeePercent);
   private readonly _insurancePercent = signal<number>(INITIAL_FEES.insurancePercent);
@@ -56,11 +64,13 @@ export class LoanCalculatorService {
 
   readonly downPaymentPercent = computed<number>(() => {
     const price = this.carPrice();
-    if (price <= 0) {
+    const downPayment = this.downPayment();
+
+    if (price <= 0 || downPayment <= 0) {
       return 0;
     }
 
-    return (this.downPayment() / price) * 100;
+    return (downPayment / price) * 100;
   });
 
   /** Detected pricing tier, or null when the down payment is below 25%. */
@@ -71,11 +81,50 @@ export class LoanCalculatorService {
   /** Tier used for lookups while the minimum-payment warning is displayed. */
   readonly effectiveTier = computed<DownPaymentTier>(() => this.tier() ?? 'tier25');
 
-  readonly tierLabel = computed<string>(() => getTierOption(this.effectiveTier()).label);
-
-  readonly belowMinimum = computed<boolean>(
-    () => this.carPrice() <= 0 || this.downPaymentPercent() < MIN_DOWN_PAYMENT_PERCENT,
+  /** True only for ADIB passenger cars, where the insurance toggle applies. */
+  readonly isAdibPassenger = computed<boolean>(
+    () => this.bankId() === 'adib' && this.vehicleType() === 'passenger',
   );
+
+  /** ADIB passenger tier derived from the current down payment percentage. */
+  readonly adibPassengerTier = computed<AdibPassengerTier | null>(() =>
+    this.isAdibPassenger() ? resolveAdibPassengerTier(this.downPaymentPercent()) : null,
+  );
+
+  readonly minimumDownPaymentPercent = computed<number>(() =>
+    getMinDownPaymentPercent(this.bankId()),
+  );
+
+  readonly tierLabel = computed<string>(() => {
+    if (this.downPayment() <= 0) {
+      return 'بدون مقدم';
+    }
+
+    if (this.bankId() === 'adib') {
+      if (this.vehicleType() === 'passenger') {
+        const adibTier = this.adibPassengerTier();
+        return adibTier === null
+          ? `أقل من ${this.minimumDownPaymentPercent()}%`
+          : `فئة ${adibTier}%`;
+      }
+
+      if (this.downPaymentPercent() < this.minimumDownPaymentPercent() - 1e-9) {
+        return `أقل من ${this.minimumDownPaymentPercent()}%`;
+      }
+
+      return this.downPaymentPercent() >= 50 ? 'فئة 50% فأكثر' : 'فئة 20%';
+    }
+
+    return getTierOption(this.effectiveTier()).label;
+  });
+
+  readonly belowMinimum = computed<boolean>(() => {
+    if (this.carPrice() <= 0 || this.downPayment() <= 0) {
+      return false;
+    }
+
+    return this.downPaymentPercent() < this.minimumDownPaymentPercent() - 1e-9;
+  });
 
   readonly defaultFees = computed(() =>
     getDefaultFees(this.bankId(), this.vehicleType(), this.effectiveTier()),
@@ -89,25 +138,86 @@ export class LoanCalculatorService {
     usesAutomaticRate(this.bankId(), this.vehicleType()),
   );
 
-  /** Rate coming from the E-Bank table, when the current context supports it. */
+  /** Rate coming from the active bank table, when the current context supports it. */
   readonly tableRate = computed<number | null>(() => {
     if (!this.isAutomaticRate()) {
       return null;
     }
 
-    return getEbankRate(this.effectiveTier(), this.years(), this.applicantType());
+    const bankId = this.bankId();
+    const vehicleType = this.vehicleType();
+    const years = this.years();
+
+    if (bankId === 'ebank' && vehicleType === 'passenger') {
+      return getEbankRate(this.effectiveTier(), years, this.applicantType());
+    }
+
+    if (bankId === 'adib' && vehicleType === 'passenger') {
+      const adibTier = this.adibPassengerTier();
+      return adibTier === null ? null : getAdibPassengerRate(adibTier, years, this.adibInsured());
+    }
+
+    if (bankId === 'adib') {
+      return getAdibCommercialRate(this.downPaymentPercent(), years);
+    }
+
+    if (bankId === 'abe' && vehicleType !== 'passenger') {
+      return getAbeCommercialRate(years);
+    }
+
+    return null;
   });
 
   readonly annualRate = computed<number>(() => this._manualRate() ?? this.tableRate() ?? 0);
 
-  /** True when an E-Bank table rate has been replaced manually. */
+  /** Value bound to the interest-rate input (null renders as an empty field). */
+  readonly rateInputValue = computed<number | null>(() => this._manualRate() ?? this.tableRate());
+
+  /** True when a table rate exists and has been replaced manually. */
   readonly rateOverridden = computed<boolean>(
-    () => this.isAutomaticRate() && this._manualRate() !== null,
+    () => this.tableRate() !== null && this._manualRate() !== null,
   );
 
   readonly rateMissing = computed<boolean>(
-    () => !this.isAutomaticRate() && this._manualRate() === null,
+    () => this.tableRate() === null && this._manualRate() === null,
   );
+
+  /** Contextual explanation shown when no table rate is available. */
+  readonly rateTableNote = computed<string>(() => {
+    if (!this.isAutomaticRate()) {
+      return '';
+    }
+
+    const bankId = this.bankId();
+    const vehicleType = this.vehicleType();
+
+    if (bankId === 'adib' && vehicleType === 'passenger') {
+      if (
+        this.downPayment() <= 0 ||
+        this.downPaymentPercent() < this.minimumDownPaymentPercent() - 1e-9
+      ) {
+        return `أدخل مقدمًا لا يقل عن ${this.minimumDownPaymentPercent()}% لتفعيل جدول أسعار ADIB.`;
+      }
+
+      return this.adibInsured()
+        ? 'لا يتوفر سعر تلقائي لهذه الفئة أو المدة مع التأمين الإجباري — أدخل سعر الفائدة يدوياً.'
+        : 'لا يتوفر سعر تلقائي لهذه الفئة أو المدة بدون تأمين إجباري — أدخل سعر الفائدة يدوياً.';
+    }
+
+    if (bankId === 'adib') {
+      if (this.downPaymentPercent() < this.minimumDownPaymentPercent() - 1e-9) {
+        return `الحد الأدنى للمقدم التجاري في ADIB هو ${this.minimumDownPaymentPercent()}%.`;
+      }
+
+      return 'أسعار ADIB التجارية متاحة لمدة 5 أو 7 سنوات فقط — أدخل سعر الفائدة يدوياً.';
+    }
+
+    if (bankId === 'abe') {
+      return 'جدول البنك الزراعي يغطي من 1 إلى 7 سنوات — أدخل سعر الفائدة يدوياً.';
+    }
+
+    return 'لا يتوفر سعر تلقائي لهذه التركيبة — أدخل سعر الفائدة يدوياً.';
+  });
 
   /** True when the quote has everything needed for a meaningful result. */
   readonly ready = computed<boolean>(() => this.carPrice() > 0 && !this.rateMissing());
@@ -188,6 +298,7 @@ export class LoanCalculatorService {
     }
 
     const previousTier = this.tier();
+    const wasForcedManualRate = this.isForcedManualRate();
     const nextPrice = Math.max(0, Math.round(value));
 
     this.carPrice.set(nextPrice);
@@ -199,6 +310,8 @@ export class LoanCalculatorService {
     if (this.tier() !== previousTier) {
       this.applyFeeDefaults();
     }
+
+    this.applyTableRateIfResolved(wasForcedManualRate);
   }
 
   setDownPayment(value: number): void {
@@ -207,6 +320,7 @@ export class LoanCalculatorService {
     }
 
     const previousTier = this.tier();
+    const wasForcedManualRate = this.isForcedManualRate();
     const nextDownPayment = clamp(Math.round(value), 0, this.carPrice());
 
     this.downPayment.set(nextDownPayment);
@@ -214,6 +328,8 @@ export class LoanCalculatorService {
     if (this.tier() !== previousTier) {
       this.applyFeeDefaults();
     }
+
+    this.applyTableRateIfResolved(wasForcedManualRate);
   }
 
   setDownPaymentPercent(percent: number): void {
@@ -228,7 +344,18 @@ export class LoanCalculatorService {
   }
 
   setYears(years: LoanTermYears): void {
+    const wasForcedManualRate = this.isForcedManualRate();
     this.years.set(years);
+    this.applyTableRateIfResolved(wasForcedManualRate);
+  }
+
+  setAdibInsured(insured: boolean): void {
+    if (this.adibInsured() === insured) {
+      return;
+    }
+
+    this.adibInsured.set(insured);
+    this._manualRate.set(null);
   }
 
   setManualRate(value: number | null): void {
@@ -283,6 +410,7 @@ export class LoanCalculatorService {
     this.carPrice.set(INITIAL_CAR_PRICE);
     this.downPayment.set(INITIAL_DOWN_PAYMENT);
     this.years.set(INITIAL_YEARS);
+    this.adibInsured.set(true);
     this._manualRate.set(null);
     this.adminFeeIsManual.set(false);
     this.insuranceFeeIsManual.set(false);
@@ -295,14 +423,14 @@ export class LoanCalculatorService {
     const bank = getBankOption(this.bankId());
     const vehicle = getVehicleTypeOption(this.vehicleType());
     const applicant = getApplicantTypeOption(this.applicantType());
-    const tier = getTierOption(this.effectiveTier());
 
     const lines: string[] = [
       '*عرض تمويل سيارة*',
       `البنك: ${bank.name}`,
       `نوع السيارة: ${vehicle.label}`,
       `نوع العميل: ${applicant.label}`,
-      `فئة المقدم: ${tier.label}`,
+      ...(this.isAdibPassenger() ? [`التأمين الإجباري: ${this.adibInsured() ? 'نعم' : 'لا'}`] : []),
+      `فئة المقدم: ${this.tierLabel()}`,
       '',
       `سعر السيارة: ${formatAmount(calc.carPrice)} ج.م`,
       `المقدم: ${formatAmount(calc.downPayment)} ج.م (${formatPercent(calc.downPaymentPercent)}%)`,
@@ -324,7 +452,10 @@ export class LoanCalculatorService {
     ];
 
     if (this.belowMinimum()) {
-      lines.push('', 'تنبيه: قيمة المقدم أقل من الحد الأدنى 25%، الحساب المعروض تقديري.');
+      lines.push(
+        '',
+        `تنبيه: قيمة المقدم أقل من الحد الأدنى ${this.minimumDownPaymentPercent()}%، الحساب المعروض تقديري.`,
+      );
     }
 
     lines.push('', '_الحساب تقديري ويخضع لموافقة البنك النهائية._');
@@ -339,6 +470,18 @@ export class LoanCalculatorService {
 
   downPaymentInputValue(): string {
     return formatThousandsInput(this.downPayment());
+  }
+
+  /** Manual rate entered only because the selected combination had no table value. */
+  private isForcedManualRate(): boolean {
+    return this._manualRate() !== null && this.tableRate() === null;
+  }
+
+  /** Restores automatic pricing once a table value becomes available again. */
+  private applyTableRateIfResolved(wasForcedManualRate: boolean): void {
+    if (wasForcedManualRate && this.tableRate() !== null) {
+      this._manualRate.set(null);
+    }
   }
 
   private applyFeeDefaults(): void {

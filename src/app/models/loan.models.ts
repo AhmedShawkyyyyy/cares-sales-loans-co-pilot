@@ -8,6 +8,24 @@ export type DownPaymentTier = 'tier25' | 'tier35' | 'tier40' | 'tier50';
 
 export type LoanTermYears = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
 
+/** ADIB passenger-car down payment tiers, expressed as percentage points. */
+export type AdibPassengerTier = 20 | 30 | 35 | 40 | 45 | 50 | 55 | 60;
+
+/** ADIB passenger-car tenure buckets used by the insurance rate matrix. */
+export type AdibTermBucket = '1-2' | '3-5' | '6-7' | '8-10';
+
+export interface InsuranceRatePair {
+  readonly insured: number | null;
+  readonly uninsured: number | null;
+}
+
+export type AdibPassengerRateTable = Record<
+  AdibPassengerTier,
+  Record<AdibTermBucket, InsuranceRatePair>
+>;
+
+export type YearlyRateTable = Record<LoanTermYears, number | null>;
+
 export interface VehicleTypeOption {
   readonly id: VehicleType;
   readonly label: string;

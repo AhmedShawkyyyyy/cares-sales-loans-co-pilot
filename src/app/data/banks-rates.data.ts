@@ -1,4 +1,7 @@
 import {
+  AdibPassengerRateTable,
+  AdibPassengerTier,
+  AdibTermBucket,
   ApplicantType,
   ApplicantTypeOption,
   BankId,
@@ -11,9 +14,11 @@ import {
   RateRow,
   VehicleType,
   VehicleTypeOption,
+  YearlyRateTable,
 } from '../models/loan.models';
 
 export const MIN_DOWN_PAYMENT_PERCENT = 25;
+export const ADIB_MIN_DOWN_PAYMENT_PERCENT = 20;
 
 export const VEHICLE_TYPES: readonly VehicleTypeOption[] = [
   { id: 'passenger', label: 'ملاكي', description: 'سيارة ركوب خاصة' },
@@ -131,6 +136,83 @@ export const EBANK_PASSENGER_RATES: EbankRateTable = {
     7: { employee: 13.5, selfEmployed: 14.2 },
     8: { employee: 13.8, selfEmployed: 14.55 },
   },
+};
+
+/** ADIB passenger-car down payment tiers. */
+export const ADIB_PASSENGER_TIERS: readonly AdibPassengerTier[] = [20, 30, 35, 40, 45, 50, 55, 60];
+
+/**
+ * ADIB passenger-car annual rate matrix (ملاكي).
+ * Rows are down payment tiers; columns are tenure buckets.
+ * The same values apply to employees and business owners.
+ */
+export const ADIB_PASSENGER_RATES: AdibPassengerRateTable = {
+  20: {
+    '1-2': { insured: 15.54, uninsured: null },
+    '3-5': { insured: 15.12, uninsured: null },
+    '6-7': { insured: 16.66, uninsured: null },
+    '8-10': { insured: null, uninsured: null },
+  },
+  30: {
+    '1-2': { insured: 15.39, uninsured: 16.07 },
+    '3-5': { insured: 14.96, uninsured: 15.63 },
+    '6-7': { insured: 16.47, uninsured: 17.25 },
+    '8-10': { insured: 17.94, uninsured: 18.79 },
+  },
+  35: {
+    '1-2': { insured: 15.03, uninsured: 15.7 },
+    '3-5': { insured: 14.55, uninsured: 15.22 },
+    '6-7': { insured: 16.01, uninsured: 16.78 },
+    '8-10': { insured: 17.43, uninsured: 18.28 },
+  },
+  40: {
+    '1-2': { insured: 14.49, uninsured: 15.16 },
+    '3-5': { insured: 13.46, uninsured: 14.13 },
+    '6-7': { insured: 14.76, uninsured: 15.52 },
+    '8-10': { insured: 16.04, uninsured: 16.88 },
+  },
+  45: {
+    '1-2': { insured: 14.12, uninsured: 14.79 },
+    '3-5': { insured: 13.07, uninsured: 13.72 },
+    '6-7': { insured: 14.31, uninsured: 15.06 },
+    '8-10': { insured: 15.55, uninsured: 16.37 },
+  },
+  50: {
+    '1-2': { insured: 13.99, uninsured: 14.65 },
+    '3-5': { insured: 12.97, uninsured: 13.63 },
+    '6-7': { insured: 14.2, uninsured: 14.95 },
+    '8-10': { insured: 15.42, uninsured: 16.25 },
+  },
+  55: {
+    '1-2': { insured: 13.63, uninsured: 14.29 },
+    '3-5': { insured: 12.58, uninsured: 13.23 },
+    '6-7': { insured: 13.75, uninsured: 14.49 },
+    '8-10': { insured: 14.93, uninsured: 15.75 },
+  },
+  60: {
+    '1-2': { insured: null, uninsured: 13.85 },
+    '3-5': { insured: null, uninsured: 12.84 },
+    '6-7': { insured: null, uninsured: 14.04 },
+    '8-10': { insured: null, uninsured: 15.25 },
+  },
+};
+
+/** ADIB commercial (ربع نقل / جامبو) rates for 5 and 7 year tenures. */
+export const ADIB_COMMERCIAL_RATES = {
+  standard: { 5: 14.79, 7: 14.96 },
+  highDownPayment: { 5: 14.28, 7: 14.45 },
+} as const;
+
+/** Egyptian Agricultural Bank (ABE) commercial rates by loan year. */
+export const ABE_COMMERCIAL_RATES: YearlyRateTable = {
+  1: 15.22,
+  2: 15.26,
+  3: 15.66,
+  4: 16.14,
+  5: 16.64,
+  6: 17.15,
+  7: 17.64,
+  8: null,
 };
 
 const COMMERCIAL_FEES: Record<BankId, FeeDefaults> = {
@@ -252,8 +334,121 @@ export function getEbankRate(
   return applicantType === 'employee' ? row.employee : row.selfEmployed;
 }
 
+/** Minimum accepted down payment for the selected bank. */
+export function getMinDownPaymentPercent(bankId: BankId): number {
+  if (bankId === 'adib') {
+    return ADIB_MIN_DOWN_PAYMENT_PERCENT;
+  }
+
+  return MIN_DOWN_PAYMENT_PERCENT;
+}
+
+/** Maps a down payment percentage to the matching ADIB passenger tier. */
+export function resolveAdibPassengerTier(downPaymentPercent: number): AdibPassengerTier | null {
+  if (!Number.isFinite(downPaymentPercent)) {
+    return null;
+  }
+
+  const normalizedPercent = Math.max(0, downPaymentPercent);
+
+  for (let index = ADIB_PASSENGER_TIERS.length - 1; index >= 0; index -= 1) {
+    const tier = ADIB_PASSENGER_TIERS[index];
+    if (normalizedPercent >= tier - 1e-9) {
+      return tier;
+    }
+  }
+
+  return null;
+}
+
+/** Maps a loan tenure to an ADIB passenger tenure bucket. */
+export function getAdibTermBucket(years: LoanTermYears): AdibTermBucket {
+  if (years <= 2) {
+    return '1-2';
+  }
+
+  if (years <= 5) {
+    return '3-5';
+  }
+
+  if (years <= 7) {
+    return '6-7';
+  }
+
+  return '8-10';
+}
+
+/** ADIB passenger annual rate for a tier / tenure / insurance combination. */
+export function getAdibPassengerRate(
+  tier: AdibPassengerTier,
+  years: LoanTermYears,
+  insured: boolean,
+): number | null {
+  const pair = ADIB_PASSENGER_RATES[tier][getAdibTermBucket(years)];
+  return insured ? pair.insured : pair.uninsured;
+}
+
+/** ADIB commercial annual rate for the current down payment and tenure. */
+export function getAdibCommercialRate(
+  downPaymentPercent: number,
+  years: LoanTermYears,
+): number | null {
+  if (!Number.isFinite(downPaymentPercent)) {
+    return null;
+  }
+
+  if (downPaymentPercent < ADIB_MIN_DOWN_PAYMENT_PERCENT - 1e-9) {
+    return null;
+  }
+
+  if (years !== 5 && years !== 7) {
+    return null;
+  }
+
+  const rates =
+    downPaymentPercent >= 50
+      ? ADIB_COMMERCIAL_RATES.highDownPayment
+      : ADIB_COMMERCIAL_RATES.standard;
+
+  return rates[years];
+}
+
+/** ABE commercial annual rate by loan year (1–7). */
+export function getAbeCommercialRate(years: LoanTermYears): number | null {
+  return ABE_COMMERCIAL_RATES[years] ?? null;
+}
+
+/** Whether the current bank / vehicle combination has an automatic rate table. */
 export function usesAutomaticRate(bankId: BankId, vehicleType: VehicleType): boolean {
-  return bankId === 'ebank' && vehicleType === 'passenger';
+  if (bankId === 'ebank') {
+    return vehicleType === 'passenger';
+  }
+
+  if (bankId === 'adib') {
+    return true;
+  }
+
+  if (bankId === 'abe') {
+    return vehicleType !== 'passenger';
+  }
+
+  return false;
+}
+
+/** Quick down payment percentages relevant for the current selection. */
+export function getQuickPercentOptions(
+  bankId: BankId,
+  vehicleType: VehicleType,
+): readonly number[] {
+  if (bankId === 'adib' && vehicleType === 'passenger') {
+    return ADIB_PASSENGER_TIERS;
+  }
+
+  if (bankId === 'adib') {
+    return [20, 30, 40, 50];
+  }
+
+  return [25, 35, 40, 50];
 }
 
 function formatFeeValue(value: number): string {

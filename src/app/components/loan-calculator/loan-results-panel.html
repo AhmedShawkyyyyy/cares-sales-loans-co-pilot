@@ -43,7 +43,8 @@
               </span>
             </div>
             <p class="mt-1.5 text-xs leading-relaxed text-amber-800">
-              الحد الأدنى للمقدم هو 25%. الحساب المعروض تقديري ويستخدم سياسة فئة 25% كمرجع.
+              الحد الأدنى للمقدم هو {{ store.minimumDownPaymentPercent() }}%. الحساب المعروض تقديري
+              ويستخدم أقل فئة سعرية متاحة كمرجع.
             </p>
           </div>
         </div>
@@ -67,6 +68,9 @@
 
         <p class="mt-2.5 text-xs leading-relaxed text-slate-500">
           {{ bankName() }} • {{ vehicleLabel() }} • {{ applicantLabel() }}
+          @if (store.isAdibPassenger()) {
+            • التأمين الإجباري: {{ store.adibInsured() ? 'نعم' : 'لا' }}
+          }
         </p>
 
         <div
@@ -125,7 +129,8 @@
 
       @if (store.belowMinimum() && store.carPrice() > 0) {
         <p class="mt-2 text-xs font-medium text-amber-700">
-          القسط تقديري حتى الوصول إلى حد المقدم الأدنى 25%.
+          القسط تقديري حتى الوصول إلى حد المقدم الأدنى
+          {{ store.minimumDownPaymentPercent() }}%.
         </p>
       }
     </div>

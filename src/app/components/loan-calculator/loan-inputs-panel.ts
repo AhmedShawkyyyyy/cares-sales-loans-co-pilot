@@ -1,5 +1,11 @@
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { APPLICANT_TYPES, BANKS, LOAN_TERMS, VEHICLE_TYPES } from '../../data/banks-rates.data';
+import { ChangeDetectionStrategy, Component, computed, inject } from '@angular/core';
+import {
+  APPLICANT_TYPES,
+  BANKS,
+  LOAN_TERMS,
+  VEHICLE_TYPES,
+  getQuickPercentOptions,
+} from '../../data/banks-rates.data';
 import { ApplicantType, BankId, LoanTermYears, VehicleType } from '../../models/loan.models';
 import { LoanCalculatorService } from '../../services/loan-calculator.service';
 import { formatAmount, formatPercent } from '../../utils/format.utils';
@@ -19,7 +25,10 @@ export class LoanInputsPanelComponent {
   protected readonly banks = BANKS;
   protected readonly applicantTypes = APPLICANT_TYPES;
   protected readonly loanTerms = LOAN_TERMS;
-  protected readonly quickPercents = [25, 35, 40, 50] as const;
+
+  protected readonly quickPercents = computed<readonly number[]>(() =>
+    getQuickPercentOptions(this.store.bankId(), this.store.vehicleType()),
+  );
 
   protected readonly formatAmount = formatAmount;
   protected readonly formatPercent = formatPercent;
