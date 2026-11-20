@@ -447,24 +447,35 @@ describe('LoanCalculatorService', () => {
     expect(service.downPaymentPercent()).toBe(0);
   });
 
-  it('builds an Arabic WhatsApp quote with the key figures', () => {
+  it('builds the concise Arabic quote with only the required lines', () => {
     seedEbankQuote();
-    const quote = service.buildQuote();
 
-    expect(quote).toContain('عرض تمويل سيارة');
-    expect(quote).toContain('تنمية الصادرات (E-Bank)');
-    expect(quote).toContain('القسط الشهري: 32,343.75 ج.م');
-    expect(quote).toContain('إجمالي المطلوب كاش عند الاستلام: 405,000 ج.م');
-    expect(quote).toContain('إجمالي المبلغ المسدد: 1,940,625 ج.م');
+    expect(service.buildQuote()).toBe(
+      [
+        'مبلغ السيارة: 1,500,000 ج.م',
+        'نوع الشراء: قسط',
+        'مبلغ القسط: 32,343.75 ج.م',
+        'عدد السنوات: 5',
+        'المصاريف الإدارية على التمويل: 0 ج.م',
+        'التأمين على السيارة: 30,000 ج.م',
+      ].join('\n'),
+    );
   });
 
-  it('adds the ADIB mandatory insurance choice to the quote', () => {
+  it('marks the purchase as cash when there is no financing', () => {
     seedEbankQuote();
-    service.setBank('adib');
-    service.setAdibInsured(false);
+    service.setDownPayment(1_500_000);
 
-    const quote = service.buildQuote();
-    expect(quote).toContain('التأمين الإجباري: لا');
+    expect(service.buildQuote()).toBe(
+      [
+        'مبلغ السيارة: 1,500,000 ج.م',
+        'نوع الشراء: كاش',
+        'مبلغ القسط: 0 ج.م',
+        'عدد السنوات: 5',
+        'المصاريف الإدارية على التمويل: 0 ج.م',
+        'التأمين على السيارة: 0 ج.م',
+      ].join('\n'),
+    );
   });
 
   it('resets every field back to the initial empty quote', () => {

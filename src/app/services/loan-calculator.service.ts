@@ -12,14 +12,11 @@ import {
   getAbeCommercialRate,
   getAdibCommercialRate,
   getAdibPassengerRate,
-  getApplicantTypeOption,
-  getBankOption,
   getDefaultFees,
   getEbankRate,
   getFeePolicyNote,
   getMinDownPaymentPercent,
   getTierOption,
-  getVehicleTypeOption,
   resolveAdibPassengerTier,
   resolveDownPaymentTier,
   usesAutomaticRate,
@@ -417,50 +414,19 @@ export class LoanCalculatorService {
     this.applyFeeDefaults();
   }
 
-  /** Builds a clean Arabic WhatsApp-ready quote summary. */
+  /** Builds a clean, concise Arabic WhatsApp-ready quote summary. */
   buildQuote(): string {
     const calc = this.calculation();
-    const bank = getBankOption(this.bankId());
-    const vehicle = getVehicleTypeOption(this.vehicleType());
-    const applicant = getApplicantTypeOption(this.applicantType());
+    const purchaseType = calc.loanPrincipal > 0 ? 'قسط' : 'كاش';
 
-    const lines: string[] = [
-      '*عرض تمويل سيارة*',
-      `البنك: ${bank.name}`,
-      `نوع السيارة: ${vehicle.label}`,
-      `نوع العميل: ${applicant.label}`,
-      ...(this.isAdibPassenger() ? [`التأمين الإجباري: ${this.adibInsured() ? 'نعم' : 'لا'}`] : []),
-      `فئة المقدم: ${this.tierLabel()}`,
-      '',
-      `سعر السيارة: ${formatAmount(calc.carPrice)} ج.م`,
-      `المقدم: ${formatAmount(calc.downPayment)} ج.م (${formatPercent(calc.downPaymentPercent)}%)`,
-      `مبلغ التمويل: ${formatAmount(calc.loanPrincipal)} ج.م`,
-      `مدة القرض: ${calc.years} سنوات (${calc.totalInstallments} قسط)`,
-      `سعر الفائدة السنوية: ${formatPercent(calc.annualRate)}%`,
-      '',
-      `*القسط الشهري: ${formatAmount(calc.monthlyInstallment)} ج.م*`,
-      `المصاريف الإدارية: ${formatAmount(
-        calc.adminFeeAmount,
-      )} ج.م (${formatPercent(calc.adminFeePercent)}%)`,
-      `مصاريف التأمين: ${formatAmount(
-        calc.insuranceAmount,
-      )} ج.م (${formatPercent(calc.insurancePercent)}%)`,
-      `*إجمالي المطلوب كاش عند الاستلام: ${formatAmount(calc.totalCashOnDelivery)} ج.م*`,
-      '',
-      `إجمالي الفوائد: ${formatAmount(calc.totalInterest)} ج.م`,
-      `إجمالي المبلغ المسدد: ${formatAmount(calc.totalPayable)} ج.م`,
-    ];
-
-    if (this.belowMinimum()) {
-      lines.push(
-        '',
-        `تنبيه: قيمة المقدم أقل من الحد الأدنى ${this.minimumDownPaymentPercent()}%، الحساب المعروض تقديري.`,
-      );
-    }
-
-    lines.push('', '_الحساب تقديري ويخضع لموافقة البنك النهائية._');
-
-    return lines.join('\n');
+    return [
+      `مبلغ السيارة: ${formatAmount(calc.carPrice)} ج.م`,
+      `نوع الشراء: ${purchaseType}`,
+      `مبلغ القسط: ${formatAmount(calc.monthlyInstallment)} ج.م`,
+      `عدد السنوات: ${calc.years}`,
+      `المصاريف الإدارية على التمويل: ${formatAmount(calc.adminFeeAmount)} ج.م`,
+      `التأمين على السيارة: ${formatAmount(calc.insuranceAmount)} ج.م`,
+    ].join('\n');
   }
 
   /** Formatted car price for the masked currency input. */
