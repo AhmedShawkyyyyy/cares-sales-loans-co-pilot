@@ -1,4 +1,14 @@
-import { ChangeDetectionStrategy, Component, effect, input, output, signal } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  Component,
+  ElementRef,
+  computed,
+  effect,
+  input,
+  output,
+  signal,
+  viewChild,
+} from '@angular/core';
 import { formatThousandsInput, parseNumericInput } from '../../../utils/format.utils';
 
 /**
@@ -11,11 +21,14 @@ import { formatThousandsInput, parseNumericInput } from '../../../utils/format.u
   template: `
     <div class="relative">
       <input
+        #inputEl
         [id]="inputId()"
         type="text"
         inputmode="numeric"
         autocomplete="off"
-        class="control control-with-unit num text-start"
+        class="control num text-start"
+        [class.control-with-unit]="!hasValue()"
+        [class.control-with-clear]="hasValue()"
         [class.control-invalid]="invalid()"
         [value]="draft()"
         [placeholder]="placeholder()"
@@ -24,7 +37,32 @@ import { formatThousandsInput, parseNumericInput } from '../../../utils/format.u
         (input)="onInput($event)"
         (blur)="onBlur()"
       />
-      <span class="unit">ج.م</span>
+      <div class="pointer-events-none absolute inset-y-0 end-2.5 flex items-center gap-1.5">
+        <span class="text-[11px] font-medium text-slate-500">ج.م</span>
+        @if (hasValue()) {
+          <button
+            type="button"
+            class="pointer-events-auto flex h-5 w-5 items-center justify-center rounded-full text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-300"
+            aria-label="مسح القيمة"
+            title="مسح القيمة"
+            (click)="clear()"
+          >
+            <svg
+              class="h-3.5 w-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M18 6 6 18" />
+              <path d="m6 6 12 12" />
+            </svg>
+          </button>
+        }
+      </div>
     </div>
   `,
 })
@@ -37,6 +75,8 @@ export class CurrencyInputComponent {
 
   private focused = false;
   protected readonly draft = signal<string>('');
+  protected readonly hasValue = computed<boolean>(() => this.draft().trim() !== '');
+  private readonly inputEl = viewChild<ElementRef<HTMLInputElement>>('inputEl');
 
   constructor() {
     effect(() => {
@@ -61,5 +101,11 @@ export class CurrencyInputComponent {
   protected onBlur(): void {
     this.focused = false;
     this.draft.set(formatThousandsInput(this.value()));
+  }
+
+  protected clear(): void {
+    this.draft.set('');
+    this.valueChange.emit(null);
+    this.inputEl()?.nativeElement.focus();
   }
 }
